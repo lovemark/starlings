@@ -1,0 +1,100 @@
+<!-- Starlings game -->
+<html>
+  <head>
+    <title>Starlings - The Game</title>
+    <script type="text/javascript" src="http://luismark.github.io/apis/luismark/v1.1.0/luismark.js"></script>
+    <script type="text/javascript" src="https://code.jquery.com/jquery-1.11.2.js"></script>
+    <script type="text/javascript" src="http://snap.berkeley.edu/snapsource/morphic.js"></script>
+  </head>
+  <body>
+    <canvas class="world" id="mainCanvas" width="50" height="40"></canvas>
+    <script type="text/javascript">
+      var starlingsTimer = setInterval(function() {
+        // Only execute in full screen
+        if (Math.max($(document).height(), $(window).height()) >= screen.availHeight) {
+          clearInterval(starlingsTimer);
+          var starlingsManager = new StarlingsManagerMorph(),
+              world = new WorldMorph($(".world")[0]);
+          starlingsManager.openIn(world);
+          var gameTimer = setInterval(function() {
+            world.doOneCycle();
+          }, 1);
+          starlingsManager.onError(function(self) {
+            self.errorMsg = new ErrorMessageMorph(self);
+            self.addChild(self.errorMsg);
+          });
+        }
+      }, 500);
+      function StarlingsManagerMorph() {
+        this.init();
+      }
+      StarlingsManagerMorph.prototype = new FrameMorph();
+      StarlingsManagerMorph.uber = FrameMorph.prototype;
+      StarlingsManagerMorph.prototype.init = function() {
+        StarlingsManagerMorph.uber.init.call(this);
+        this.username = "";
+        this.planets = [];
+        this.currentPlanetIndex = 0;
+        this.morph = null;
+        this.bounds = new Rectangle(0, 0, 1366, 768);
+        this.colour = this.color = new Color();
+        this.coins = 0;
+        this.minerals = 0;
+        this.errorCallback = function() { return true; };
+      };
+      jQuery.each(["Coins", "Minerals"], function(i, e) {
+        StarlingsManagerMorph.prototype["add" + e] = function(amount) {
+          this[e.toLowerCase()] += amount;
+          if (this.planets[this.currentPlanetIndex].allStorage(e) < this[e.toLowerCase()]) {
+            this[e.toLowerCase()] = this.planets[this.currentPlanetIndex].allStorage(e);
+            console.log("Insufficient storage for " + e.toLowerCase());
+            return false;
+          }
+          return true;
+        };
+        StarlingsManagerMorph.prototype["remove" + e] = function(amount) {
+          this[e.toLowerCase()] -= amount;
+          if (this[e.toLowerCase()] < 0) {
+            this[e.toLowerCase()] = 0;
+            console.log("We don't have enough " + e.toLowerCase() + "!");
+            return false;
+          }
+          return true;
+        };
+      });
+      // Use a recursive Math.max to support more than 2 arguments
+      // to behave like the native code version but as a
+      // JavaScript-defined method.
+      Math.max = function(a) {
+        if (arguments.length === 1) {
+          return a;
+        }
+        var b = Math.max.apply(Math, Array.prototype.slice.call(arguments).slice(1, arguments.length));
+        return a > b ? a : b;
+      };
+      StarlingsManagerMorph.prototype.openIn = function(world) {
+        this.bounds = world.bounds;
+        this.world = world;
+        if (!contains(world.children, this)) {
+          world.addChild(this);
+        }
+      };
+      StarlingsManagerMorph.prototype.onError = function(callback) {
+        this.errorCallback = jQuery.isFunction(callback) ? callback : this.callback;
+      };
+      function StarlingsHeaderMorph() {
+        this.init();
+      }
+      StarlingsHeaderMorph.prototype = new Morph();
+      StarlingsHeaderMorph.uber = Morph.prototype;
+      StarlingsHeaderMorph.prototype.init = function(world) {
+        StarlingsHeaderMorph.uber.init.call(this);
+        this.texture = "http://luismark.github.io/starlings/assets/header.png";
+        this.bounds = new Rectangle(0, 0, 450, 160);
+        world.addChild(this);
+        this.drawNew();
+      };
+      modules.starlings = "2014-December-20";
+    </script>
+  </body>
+</html>

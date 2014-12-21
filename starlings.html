@@ -29,6 +29,7 @@
         this.init();
       }
       StarlingsManagerMorph.prototype = new FrameMorph();
+      StarlingsManagerMorph.prototype.constructor = StarlingsManagerMorph;
       StarlingsManagerMorph.uber = FrameMorph.prototype;
       StarlingsManagerMorph.prototype.init = function() {
         StarlingsManagerMorph.uber.init.call(this);
@@ -41,6 +42,11 @@
         this.coins = 0;
         this.minerals = 0;
         this.errorCallback = function() { return true; };
+        this.starlings = [];
+        this.header = new StarlingsHeaderMorph(this);
+        this.addChild(this.header);
+        this.mode = 1; // 1 for galaxy, 2 for planet, 3 for system
+        this.starlingTimeout = 10000;
       };
       jQuery.each(["Coins", "Minerals"], function(i, e) {
         StarlingsManagerMorph.prototype["add" + e] = function(amount) {
@@ -82,19 +88,79 @@
       StarlingsManagerMorph.prototype.onError = function(callback) {
         this.errorCallback = jQuery.isFunction(callback) ? callback : this.callback;
       };
-      function StarlingsHeaderMorph() {
-        this.init();
+      StarlingsManagerMorph.prototype.step = function() {
+        /* Notes:
+         * This method is executed every 1 ms.
+         * This is the game stepper itself.
+         * The timer is only triggered in full screen.
+         */
+        if (this.mode !== 2) {
+          this.starlings = [];
+        } else {
+          this.starlingTimeout -= 1;
+          if (this.starlingTimeout <= 0) {
+            this.starlings.forEach(function(starling) {
+              starling.end();
+            });
+            this.starlings = [];
+            this.starlingTimeout = 10000;
+            this.generateStarlings(0, 0, 3072, 3072, 112);
+          }
+        }
+        this.parent.fullDrawOn(this.parent.worldCanvas);
+        this.starlings.forEach(function(starling) {
+          var stepper = starling && starling.step;
+          if (starling instanceof Morph
+          &&  stepper !== Morph.prototype.step
+          &&  jQuery.isFunction(step)
+          &&  stepper.toString().replace("  ", " ")
+          !=  Morph.prototype.toString.replace("  ", " ")) {
+            // Step if this is a morph and it has a stepper different
+            // from Jens' default stepper for morphs.
+            starling.step();
+          }
+        });
+      };
+      StarlingsManagerMorph.prototype.generateStarlings = function(x, y, w, h, n) {
+        for (var i = 0; i < n; i++) {
+          new StarlingMorph(this, 10 + x + (Math.random() * (w - 20)), 10 + y + (Math.random() * (h - 20)));
+        }
+      };
+      function StarlingsHeaderMorph(manager) {
+        this.init(manager);
       }
       StarlingsHeaderMorph.prototype = new Morph();
+      StarlingsHeaderMorph.prototype.constructor = StarlingsHeaderMorph;
       StarlingsHeaderMorph.uber = Morph.prototype;
-      StarlingsHeaderMorph.prototype.init = function(world) {
+      StarlingsHeaderMorph.prototype.init = function(manager) {
         StarlingsHeaderMorph.uber.init.call(this);
         this.texture = "http://luismark.github.io/starlings/assets/header.png";
         this.bounds = new Rectangle(0, 0, 450, 160);
-        world.addChild(this);
+        manager.addChild(this);
         this.drawNew();
       };
-      modules.starlings = "2014-December-20";
+      modules.starlings = "2014-December-21";
+      function StarlingMorph(manager, x, y) {
+        this.init(manager, x, y);
+      }
+      StarlingMorph.prototype = new Morph();
+      StarlingMorph.prototype.constructor = StarlingMorph;
+      StarlingMorph.uber = Morph.prototype;
+      StarlingMorph.prototype.init = function(manager, x, y) {
+        StarlingMorph.uber.init.call(this);
+        this.starlingX = x;
+        this.starlingY = y;
+        this.starlingBounds = new Rectangle(x, y, 20, 20);
+        manager.starlings.push(this);
+      };
+      StarlingMorph.prototype.end = function(manager) {
+        var index = manager.starlings.indexOf(this);
+        var array = manager.starlings;
+        if (index != -1) {
+          // Get rid of this Starling in the Starling table of the manager.
+          manager.starlings = array.slice(0, index).concat(array.slice(index + 1, array.length));
+        }
+      };
     </script>
   </body>
 </html>

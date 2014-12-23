@@ -1,4 +1,7 @@
 starlings
 =========
 
-A game similar to Galaxy Life.
+An interesting game.
+
+What are you waiting for?
+Play it [here](http://luismark.github.io/starlings) !
